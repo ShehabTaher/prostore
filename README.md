@@ -2,7 +2,7 @@
 
 A full-stack e-commerce storefront built with **Next.js**, following Brad Traversy’s Prostore course.
 
-**Progress:** Sections **1** and **2** complete · currently moving into Section 3.
+**Progress:** Sections **1–3** complete · currently moving into Section 4.
 
 ---
 
@@ -12,7 +12,7 @@ A full-stack e-commerce storefront built with **Next.js**, following Brad Traver
 | --- | --- |
 | Framework | Next.js (App Router), React, TypeScript |
 | Styling | Tailwind CSS, shadcn/ui |
-| Database | Prisma *(coming in Section 3)* |
+| Database | Prisma |
 | Auth | NextAuth *(Section 4)* |
 | Payments | PayPal *(Section 8)*, Stripe *(Section 15)* |
 
@@ -81,16 +81,35 @@ lib/
 
 ---
 
-### Section 3 — Database, Prisma & Product Display
+### ✅ Section 3 — Database, Prisma & Product Display
 
 **Goal:** Replace sample data with a real database and persist products.
 
-**What you will build**
+**What you build**
 - Prisma setup and schema (products, users, etc.)
 - Database connection and seeding from sample data
-- Fetch products from the DB on the home page
-- Product details page by slug
-- Stronger typing for product models
+- Server actions to fetch latest products and a product by slug
+- Product details page by slug (`/product/[slug]`)
+- Product image gallery and stronger typing / validators
+
+**Key folders after this section**
+```
+prisma/
+  schema.prisma          # Product (and related) models
+db/
+  prisma.ts              # Prisma client
+  seed.ts                # seed from sample data
+  sample-data.ts
+lib/
+  actions/product.actions.ts
+  validators.ts
+  generated/prisma/      # generated client
+app/(root)/
+  product/[slug]/page.tsx
+components/shared/product/
+  product-images.tsx
+types/
+```
 
 **Outcome:** Products load from the database instead of a static file.
 
@@ -295,16 +314,17 @@ lib/
 
 ---
 
-## Current status (after Sections 1–2)
+## Current status (after Sections 1–3)
 
 Already in place:
 - Next.js app structure with App Router
 - Global layout, theming, header, footer
 - Mode toggle and responsive menu
 - Loading + 404 pages
-- Featured products UI powered by `db/sample-data.ts`
+- Prisma schema, client, and seed script
+- Home page products and product detail pages from the database
 
-**Next up (Section 3):** Prisma, real database, and product pages backed by the DB.
+**Next up (Section 4):** Authentication with NextAuth (sign-in, sign-up, sessions).
 
 ---
 
