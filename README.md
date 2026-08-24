@@ -1,36 +1,318 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Prostore
 
-## Getting Started
+A full-stack e-commerce storefront built with **Next.js**, following Brad Traversy’s Prostore course.
 
-First, run the development server:
+**Progress:** Sections **1** and **2** complete · currently moving into Section 3.
+
+---
+
+## Tech stack
+
+| Layer | Tools |
+| --- | --- |
+| Framework | Next.js (App Router), React, TypeScript |
+| Styling | Tailwind CSS, shadcn/ui |
+| Database | Prisma *(coming in Section 3)* |
+| Auth | NextAuth *(Section 4)* |
+| Payments | PayPal *(Section 8)*, Stripe *(Section 15)* |
+
+---
+
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Course roadmap
 
-## Learn More
+Each section below explains **what you build** and **why it matters**. Completed sections are marked ✅.
 
-To learn more about Next.js, take a look at the following resources:
+### ✅ Section 1 — Introduction
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Goal:** Understand the project goals, final app features, and how the course is structured.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**What you learn**
+- Overview of the Prostore e-commerce app (shop, cart, checkout, admin)
+- Tools and services used across the course
+- How the finished product should look and behave
 
-## Deploy on Vercel
+**Outcome:** Clear mental model of the app before writing code.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### ✅ Section 2 — App Creation & Basic Layout
+
+**Goal:** Bootstrap the Next.js app and build the shared UI shell.
+
+**What you build**
+- Next.js app with TypeScript and Tailwind CSS
+- Global layout, metadata, fonts, and theme provider (`next-themes`)
+- Shared **header** (logo, nav, cart/user placeholders) and **footer**
+- Dark / light **mode toggle**
+- shadcn/ui components (Button, Sheet, Dropdown, Card, etc.)
+- Custom **loading** and **not-found** pages
+- App constants (`APP_NAME`, description, etc.)
+- Early product UI from sample data: `ProductList`, `ProductCard`, `ProductPrice`
+
+**Key folders after this section**
+```
+app/
+  (root)/          # main storefront layout + home page
+  layout.tsx       # root layout + ThemeProvider
+  loading.tsx
+  not-found.tsx
+components/
+  shared/header/   # header, menu, mode toggle
+  shared/product/  # product list, card, price
+  ui/              # shadcn primitives
+db/
+  sample-data.ts   # temporary product data
+lib/
+  constants/       # app name, description, etc.
+```
+
+**Outcome:** A working storefront shell that lists featured products from sample data.
+
+---
+
+### Section 3 — Database, Prisma & Product Display
+
+**Goal:** Replace sample data with a real database and persist products.
+
+**What you will build**
+- Prisma setup and schema (products, users, etc.)
+- Database connection and seeding from sample data
+- Fetch products from the DB on the home page
+- Product details page by slug
+- Stronger typing for product models
+
+**Outcome:** Products load from the database instead of a static file.
+
+---
+
+### Section 4 — Authentication With Next Auth
+
+**Goal:** Let users sign up, sign in, and access protected routes.
+
+**What you will build**
+- NextAuth configuration (credentials / providers)
+- Sign-in and sign-up pages
+- Session handling in the header (user menu)
+- Protected routes and role awareness (user vs admin)
+
+**Outcome:** Authenticated users can use account-related features.
+
+---
+
+### Section 5 — Add To Cart
+
+**Goal:** Let shoppers add products to a cart.
+
+**What you will build**
+- Cart data model and server actions
+- Add-to-cart button on product pages
+- Cart quantity and stock handling
+- Persist cart for guests and logged-in users
+
+**Outcome:** Items can be added to a working cart.
+
+---
+
+### Section 6 — Cart & Shipping Pages
+
+**Goal:** Complete the cart review and shipping address steps.
+
+**What you will build**
+- Cart page (update quantities, remove items, totals)
+- Shipping address form and validation
+- Checkout flow navigation between steps
+
+**Outcome:** Users can review the cart and enter a shipping address.
+
+---
+
+### Section 7 — Payment Method & Order Pages
+
+**Goal:** Choose a payment method and create orders.
+
+**What you will build**
+- Payment method selection page
+- Place-order summary page
+- Order creation in the database
+- Order details page after checkout
+
+**Outcome:** A full checkout flow that creates real orders.
+
+---
+
+### Section 8 — PayPal Payments
+
+**Goal:** Accept payments with PayPal.
+
+**What you will build**
+- PayPal SDK / API integration
+- Pay button on the order page
+- Mark orders as paid after successful payment
+
+**Outcome:** Orders can be paid through PayPal.
+
+---
+
+### Section 9 — Order History & User Profile
+
+**Goal:** Give users an account area for orders and profile updates.
+
+**What you will build**
+- User order history list
+- Order details for past purchases
+- Profile update form (name, etc.)
+
+**Outcome:** Users can manage their profile and view past orders.
+
+---
+
+### Section 10 — Admin Overview & Orders
+
+**Goal:** Start the admin dashboard with overview stats and order management.
+
+**What you will build**
+- Admin layout and navigation
+- Overview cards (sales, users, products, orders)
+- Admin orders list and order details
+- Mark orders as delivered
+
+**Outcome:** Admins can monitor the store and manage orders.
+
+---
+
+### Section 11 — Admin Products & Image Upload
+
+**Goal:** Let admins create and edit products, including images.
+
+**What you will build**
+- Admin products list (create / update / delete)
+- Product form with validation
+- Image upload (e.g. Uploadthing or similar)
+- Stock and featured product controls
+
+**Outcome:** Full product CRUD in the admin panel.
+
+---
+
+### Section 12 — Admin Users & Search
+
+**Goal:** Manage users and add search across admin lists.
+
+**What you will build**
+- Admin users list and edit user roles
+- Search for products, orders, and users
+- Pagination for large admin tables
+
+**Outcome:** Admins can find and manage users and records quickly.
+
+---
+
+### Section 13 — Search Filtering, Drawer & Carousel
+
+**Goal:** Improve the storefront discovery experience.
+
+**What you will build**
+- Product search and category / price filters
+- Filter drawer (mobile-friendly)
+- Homepage banner carousel
+
+**Outcome:** Shoppers can browse and filter products more easily.
+
+---
+
+### Section 14 — Ratings & Reviews
+
+**Goal:** Let customers leave product reviews.
+
+**What you will build**
+- Review form (rating + comment)
+- Reviews list on the product page
+- Average rating display on cards / details
+
+**Outcome:** Products show community ratings and reviews.
+
+---
+
+### Section 15 — Stripe Payments
+
+**Goal:** Add Stripe as another payment option.
+
+**What you will build**
+- Stripe payment integration
+- Payment UI on the order page
+- Confirm payment and update order status
+
+**Outcome:** Orders can be paid with Stripe as well as PayPal.
+
+---
+
+### Section 16 — Email Purchase Receipts
+
+**Goal:** Send email confirmations after purchase.
+
+**What you will build**
+- Email provider setup (e.g. Resend)
+- Purchase receipt template
+- Trigger email when an order is paid
+
+**Outcome:** Customers receive order confirmation emails.
+
+---
+
+### Section 17 — Homepage Components & Wrap Up
+
+**Goal:** Polish the homepage and finish remaining UI pieces.
+
+**What you will build**
+- Featured deals / promotional homepage sections
+- Final layout polish and consistency passes
+- Course wrap-up and deployment notes
+
+**Outcome:** A polished, production-ready looking storefront.
+
+---
+
+### Section 18 — Notes & Fixes
+
+**Goal:** Apply course notes, bug fixes, and small improvements.
+
+**What you will build**
+- Fixes called out in the course updates
+- Small refactors and edge-case handling
+
+**Outcome:** A more stable final version of the app.
+
+---
+
+## Current status (after Sections 1–2)
+
+Already in place:
+- Next.js app structure with App Router
+- Global layout, theming, header, footer
+- Mode toggle and responsive menu
+- Loading + 404 pages
+- Featured products UI powered by `db/sample-data.ts`
+
+**Next up (Section 3):** Prisma, real database, and product pages backed by the DB.
+
+---
+
+## Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start development server |
+| `npm run build` | Create production build |
+| `npm run start` | Run production server |
+| `npm run lint` | Run ESLint |
