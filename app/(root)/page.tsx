@@ -1,17 +1,14 @@
 import { Metadata } from 'next'
-import sampleData from '@/db/sample-data'
+import { getLatestProducts } from '@/lib/actions/product.actions'
 import ProductList from '@/components/shared/product/product-list'
 export const metadata: Metadata = {
   title: 'Home',
 }
-const HomePage = () => {
+const HomePage = async () => {
+  const latestProducts = await getLatestProducts()
   return (
     <>
-      <ProductList
-        data={sampleData.products}
-        title='Featured Products'
-        limit={4}
-      />
+      <ProductList data={latestProducts} title='Featured Products' />
     </>
   )
 }
