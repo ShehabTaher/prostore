@@ -10,6 +10,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
+import UserButton from './user-button'
 
 const Menu = () => {
   return (
@@ -21,11 +22,7 @@ const Menu = () => {
             <ShoppingCart /> Cart
           </Link>
         </Button>
-        <Button asChild>
-          <Link href='/sign-in'>
-            <UserIcon /> Sign In
-          </Link>
-        </Button>
+        <UserButton />
       </nav>
 
       <nav className='md:hidden'>
@@ -59,11 +56,7 @@ const Menu = () => {
                 </Link>
               </Button>
 
-              <Button asChild className='mt-2 h-11 w-full gap-2'>
-                <Link href='/sign-in'>
-                  <UserIcon /> Sign In
-                </Link>
-              </Button>
+              <UserButton />
             </div>
           </SheetContent>
         </Sheet>

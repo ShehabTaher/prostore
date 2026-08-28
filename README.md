@@ -2,7 +2,7 @@
 
 A full-stack e-commerce storefront built with **Next.js**, following Brad Traversy’s Prostore course.
 
-**Progress:** Sections **1–3** complete · currently moving into Section 4.
+**Progress:** Sections **1–4** complete · currently moving into Section 5.
 
 ---
 
@@ -13,7 +13,7 @@ A full-stack e-commerce storefront built with **Next.js**, following Brad Traver
 | Framework | Next.js (App Router), React, TypeScript |
 | Styling | Tailwind CSS, shadcn/ui |
 | Database | Prisma |
-| Auth | NextAuth *(Section 4)* |
+| Auth | NextAuth v5 (Auth.js), credentials provider |
 | Payments | PayPal *(Section 8)*, Stripe *(Section 15)* |
 
 ---
@@ -115,17 +115,74 @@ types/
 
 ---
 
-### Section 4 — Authentication With Next Auth
+### ✅ Section 4 — Authentication With Next Auth
 
 **Goal:** Let users sign up, sign in, and access protected routes.
 
-**What you will build**
-- NextAuth configuration (credentials / providers)
-- Sign-in and sign-up pages
-- Session handling in the header (user menu)
-- Protected routes and role awareness (user vs admin)
+**What you build**
+- **NextAuth v5 (Auth.js)** in `auth.ts` with a **credentials** provider (email + password)
+- **JWT session strategy** (required for credentials; database sessions are not used for login)
+- **Prisma Adapter** and auth-related models: `User`, `Account`, `Session`, `VerificationToken`
+- **API route** at `app/api/auth/[...nextauth]/route.ts` exporting NextAuth handlers
+- **Sign-in** (`/sign-in`) and **sign-up** (`/sign-up`) pages under the `(auth)` route group
+- **Server actions** in `lib/actions/user.action.ts`: sign in, sign up (hash password, auto sign-in), sign out
+- **Zod validators** (`signInSchema`, `signUpSchema`) for form validation
+- **Password hashing** with `bcrypt-ts-edge` (edge-compatible for Next.js server actions)
+- **Header session UI**: `UserButton` dropdown (name, email, sign out) or “Sign In” link when logged out
+- **Session typing** extended in `types/next-auth.d.ts` so `session.user` includes `id` and `role`
+- **JWT callbacks** to persist `role` on the token and expose it on the session
+- **Seed users** in `db/sample-data.ts` (admin + regular user with hashed passwords)
+- **Error formatting** in `lib/format-error.ts` for Zod and duplicate-email (Prisma `P2002`) errors
+- **User DB helpers** in `lib/db.ts` for `getUserByEmail`, `createUser`, `updateUserName`
 
-**Outcome:** Authenticated users can use account-related features.
+**Key folders after this section**
+```
+auth.ts                          # NextAuth config, providers, callbacks
+app/
+  (auth)/                        # centered auth layout
+    sign-in/                     # sign-in page + credentials form
+    sign-up/                     # sign-up page + form
+  api/auth/[...nextauth]/route.ts
+components/
+  shared/header/
+    user-button.tsx              # session-aware header control
+    sign-out-form.tsx
+  ui/input.tsx, label.tsx        # form primitives
+lib/
+  actions/user.action.ts
+  db.ts                          # user queries (used by auth + actions)
+  format-error.ts
+  validators.ts                  # + sign-in / sign-up schemas
+types/
+  next-auth.d.ts                 # Session & JWT type extensions
+prisma/
+  schema.prisma                  # User, Account, Session, VerificationToken
+```
+
+**How it works (short)**
+1. **Sign up** — form submits to `signUpUser` → validates with Zod → hashes password → creates user in DB → signs in with credentials.
+2. **Sign in** — `signInWithCredentials` validates input → `signIn('credentials', …)` → `authorize` loads user by email and compares password with `compareSync`.
+3. **Session** — JWT holds `role` and user id; `session` callback attaches them to `session.user` for server components (e.g. header).
+4. **Sign out** — `signOutUser` server action calls NextAuth `signOut`.
+
+**Issues encountered & how AI helped**
+
+The course targets an older NextAuth setup; this project uses **Next.js App Router**, **NextAuth v5**, and **Prisma 7 with the Neon driver adapter**. Several errors did not match the course verbatim — **Cursor AI was used to debug and fix them**:
+
+| Issue | What went wrong | Fix (with AI) |
+| --- | --- | --- |
+| **Redirect treated as error** | `signIn()` throws a Next.js redirect; catching it in server actions showed “Invalid email or password” on success | Re-throw redirect via `isRedirectError(error)` in `user.action.ts` |
+| **Prisma duplicate email message** | Neon adapter reports `P2002` with a different `meta` shape than classic Prisma | `format-error.ts` reads both `driverAdapterError` and legacy `meta.target` to show “Email already exists” |
+| **User queries / client typing** | Extended `prisma` client vs base client for auth tables | Thin `lib/db.ts` wrapper with explicit user client types on `prismaBase` |
+| **Password compare in auth** | `bcrypt` vs edge runtime | `compareSync` from `bcrypt-ts-edge/browser` in `authorize`; `hashSync` from `bcrypt-ts-edge` in actions |
+| **PrismaAdapter types** | Adapter expects a compatible Prisma client type | `PrismaAdapter(prismaBase as never)` until types align with generated client |
+| **Default name `NO_NAME`** | New users may have placeholder name from schema default | JWT callback sets name from email prefix and `updateUserName` in DB |
+
+**Not in this section yet (later in the course)**
+- `middleware.ts` for protected routes
+- Admin-only route guards using `session.user.role`
+
+**Outcome:** Users can register, log in, and see their session in the header. Role is available on the session for upcoming admin features.
 
 ---
 
@@ -314,7 +371,7 @@ types/
 
 ---
 
-## Current status (after Sections 1–3)
+## Current status (after Sections 1–4)
 
 Already in place:
 - Next.js app structure with App Router
@@ -323,8 +380,11 @@ Already in place:
 - Loading + 404 pages
 - Prisma schema, client, and seed script
 - Home page products and product detail pages from the database
+- NextAuth credentials auth: sign-in, sign-up, sign-out
+- Session-aware header (`UserButton`) with user name and role on JWT/session
+- Seeded test users (e.g. admin and regular user — see `db/sample-data.ts`)
 
-**Next up (Section 4):** Authentication with NextAuth (sign-in, sign-up, sessions).
+**Next up (Section 5):** Add to cart (cart model, server actions, persist for guests and logged-in users).
 
 ---
 
