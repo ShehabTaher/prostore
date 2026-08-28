@@ -3,9 +3,10 @@ import { Inter, Geist } from 'next/font/google'
 import '@/assets/styles/globals.css'
 import { APP_NAME, APP_DESCRIPTION } from '@/lib/constants'
 import { ThemeProvider } from 'next-themes'
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils'
+import { Toaster } from '@/components/ui/sonner'
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' })
 
 const inter = Inter({
   subsets: ['latin'],
@@ -21,8 +22,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang='en' suppressHydrationWarning className={cn("font-sans", geist.variable)}>
-      <body className={`${inter.className} antialiased`} suppressHydrationWarning>
+    <html
+      lang='en'
+      suppressHydrationWarning
+      className={cn('font-sans', geist.variable)}
+    >
+      <body
+        className={`${inter.className} antialiased`}
+        suppressHydrationWarning
+      >
         <ThemeProvider
           attribute='class'
           defaultTheme='dark'
@@ -30,6 +38,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           disableTransitionOnChange
         >
           {children}
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

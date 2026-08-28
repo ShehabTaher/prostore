@@ -2,7 +2,7 @@
 
 A full-stack e-commerce storefront built with **Next.js**, following Brad Traversy’s Prostore course.
 
-**Progress:** Sections **1–4** complete · currently moving into Section 5.
+**Progress:** Sections **1–5** complete · currently moving into Section 6.
 
 ---
 
@@ -186,17 +186,69 @@ The course targets an older NextAuth setup; this project uses **Next.js App Rout
 
 ---
 
-### Section 5 — Add To Cart
+### ✅ Section 5 — Add To Cart
 
-**Goal:** Let shoppers add products to a cart.
+**Goal:** Let shoppers add products to a cart, persist that cart in the database, and show quantity controls on the product page.
 
-**What you will build**
-- Cart data model and server actions
-- Add-to-cart button on product pages
-- Cart quantity and stock handling
-- Persist cart for guests and logged-in users
+**What you build**
 
-**Outcome:** Items can be added to a working cart.
+1. **Cart model in Prisma** — `Cart` table with `sessionCartId` (guest identifier), optional `userId` (logged-in user), `items` as a JSON array, and price fields (`itemsPrice`, `shippingPrice`, `taxPrice`, `totalPrice`).
+2. **Guest cart cookie** — middleware sets a `sessionCartId` cookie on first visit so anonymous users still get a stable cart.
+3. **Zod validators & types** — `cartSchema` (single line item) and `insertCartSchema` (full cart row); `Cart` / `CartItem` types inferred in `types/index.ts`.
+4. **Price helpers** — `roundTo2DecimalPlaces` and `convertToPlainObject` in `lib/utils.ts` so Prisma `Decimal` values serialize cleanly for the client.
+5. **Server actions** (`lib/actions/cart.actions.ts`):
+   - `calcPrice` — subtotal, shipping (free over $100, else $10), 15% tax, total
+   - `getMyCart` — load cart by `userId` when signed in, otherwise by `sessionCartId`
+   - `addToCart` — validate item, check stock, create or update cart, `revalidatePath` on the product page
+   - `removeItemFromCart` — decrement quantity or remove line item, recalculate prices
+6. **`AddToCart` client component** — full “Add to Cart” button when item is not in cart; `+` / `−` controls when it is; loading state via `useTransition`; toast feedback with “Go to Cart” action; `router.refresh()` after mutations.
+7. **Product details page wiring** — fetch cart with `getMyCart()`, pass cart + item props into `AddToCart`, hide controls when `stock === 0`.
+
+**Key folders after this section**
+```
+auth.config.ts                   # sessionCartId cookie in authorized callback
+middleware.ts                    # NextAuth middleware (runs cookie logic)
+prisma/
+  schema.prisma                  # Cart model + User relation
+  migrations/..._add_cart/       # Cart table migration
+lib/
+  actions/cart.actions.ts        # add, remove, get cart
+  validators.ts                  # cartSchema, insertCartSchema
+  utils.ts                       # roundTo2DecimalPlaces, convertToPlainObject
+types/index.ts                   # Cart, CartItem
+components/shared/product/
+  add-to-cart.tsx                # client UI + server action calls
+app/(root)/product/[slug]/page.tsx
+```
+
+**How it works (short)**
+1. **First visit** — middleware sees no `sessionCartId` cookie → generates UUID → sets cookie on the response.
+2. **Product page** — server loads product + current cart; passes a `CartItem` snapshot (id, name, slug, qty 1, image, price) to `AddToCart`.
+3. **Add to cart** — client calls `addToCart` server action → validates with Zod → loads product from DB → checks stock → creates new cart or merges/updates items → recalculates prices → saves to DB → revalidates product page.
+4. **Already in cart** — UI switches to quantity controls; `+` calls `addToCart` again, `−` calls `removeItemFromCart`.
+5. **Guest vs signed-in** — guests are tracked by `sessionCartId`; logged-in users by `userId` (cart merge on login comes in a later section).
+
+**Issues encountered & how AI helped**
+
+The course uses an older Next.js / NextAuth middleware pattern and does not cover every Prisma 7 + App Router edge case. **Cursor AI was used to debug and align the implementation**:
+
+| Issue | What went wrong | Fix (with AI) |
+| --- | --- | --- |
+| **Guest cart cookie in NextAuth v5** | Course sets cookies in plain `middleware.ts`; v5 expects auth config split into `auth.config.ts` + `middleware.ts` | Move cookie logic into `authorized` callback in `auth.config.ts`; export `NextAuth(authConfig)` as middleware |
+| **`cookies()` is async (Next.js 15+)** | `cookies().get('sessionCartId')` fails or warns — `cookies()` must be awaited | Use `(await cookies()).get('sessionCartId')` in all server actions |
+| **Prisma `Decimal` not serializable** | Cart price fields return `Decimal` objects; passing cart to client components throws serialization errors | `convertToPlainObject()` + `.toString()` on price fields in `getMyCart` |
+| **`Json[]` items typing** | Prisma stores `items` as `Json[]`; TypeScript does not know the shape | Cast `(cart.items as CartItem[])` when reading/updating line items |
+| **UI not updating after add/remove** | Server action succeeds but product page still shows old quantity | Call `revalidatePath` in the action **and** `router.refresh()` in the client after success |
+| **Stock checks** | Adding beyond available stock silently or with unclear errors | Compare `product.stock` against existing quantity + requested quantity before update; return formatted error via `formatError` |
+| **Price math precision** | Floating-point totals (e.g. `0.1 + 0.2`) drift from DB `Decimal(12,2)` | Centralize totals in `calcPrice` using `roundTo2DecimalPlaces` and store fixed 2-decimal strings |
+| **Server action errors vs success** | Uncaught exceptions crash the action or show raw Prisma messages | Wrap actions in `try/catch` and return `{ success, message }` consistently (same pattern as auth actions) |
+
+**Not in this section yet (later in the course)**
+- Full `/cart` page (update quantities, remove items, totals UI) — Section 6
+- Merge guest cart into user cart on sign-in
+- Cart item count badge in the header
+
+**Outcome:** Shoppers can add products from the detail page, adjust quantity with `+` / `−`, and the cart persists in the database for guests (via cookie) and logged-in users (via `userId`).
 
 ---
 
@@ -371,7 +423,7 @@ The course targets an older NextAuth setup; this project uses **Next.js App Rout
 
 ---
 
-## Current status (after Sections 1–4)
+## Current status (after Sections 1–5)
 
 Already in place:
 - Next.js app structure with App Router
@@ -383,8 +435,10 @@ Already in place:
 - NextAuth credentials auth: sign-in, sign-up, sign-out
 - Session-aware header (`UserButton`) with user name and role on JWT/session
 - Seeded test users (e.g. admin and regular user — see `db/sample-data.ts`)
+- Cart model, `sessionCartId` guest cookie, and cart server actions (`addToCart`, `removeItemFromCart`, `getMyCart`)
+- Add-to-cart UI on product pages with quantity controls, stock checks, and toast feedback
 
-**Next up (Section 5):** Add to cart (cart model, server actions, persist for guests and logged-in users).
+**Next up (Section 6):** Cart page and shipping address form.
 
 ---
 

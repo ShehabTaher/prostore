@@ -1,19 +1,13 @@
-import NextAuth, { type NextAuthConfig } from 'next-auth'
+import NextAuth from 'next-auth'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import { prismaBase } from '@/db/prisma'
 import { getUserByEmail, updateUserName } from '@/lib/db'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { compareSync } from 'bcrypt-ts-edge/browser'
+import { authConfig } from '@/auth.config'
 
-export const config = {
-  pages: {
-    signIn: '/sign-in',
-    error: '/sign-in',
-  },
-  session: {
-    strategy: 'jwt' as const,
-    maxAge: 30 * 24 * 60 * 60,
-  },
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: PrismaAdapter(prismaBase as never),
   providers: [
     CredentialsProvider({
@@ -40,12 +34,12 @@ export const config = {
             }
           }
         }
-        // If no user is found or the password is incorrect, return null
         return null
       },
     }),
   ],
   callbacks: {
+    ...authConfig.callbacks,
     async session({ session, user, trigger, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub
@@ -59,18 +53,16 @@ export const config = {
 
       return session
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async jwt({ token, user, trigger, session }: any) {
+    async jwt({ token, user }) {
       if (user) {
         token.role = user.role
-        if (user.name === 'NO_NAME') {
-          token.name = user.email!.split('@')[0]
-          await updateUserName(user.id, token.name)
+        if (user.name === 'NO_NAME' && user.id && user.email) {
+          const name = user.email.split('@')[0]
+          token.name = name
+          await updateUserName(user.id, name)
         }
       }
       return token
     },
   },
-} satisfies NextAuthConfig
-
-export const { handlers, auth, signIn, signOut } = NextAuth(config)
+})
