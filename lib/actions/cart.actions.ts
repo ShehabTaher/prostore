@@ -185,9 +185,7 @@ export async function removeItemFromCart(productId: string) {
       existItem.quantity === 1
         ? (cart.items as CartItem[]).filter((x) => x.productId !== productId)
         : (cart.items as CartItem[]).map((x) =>
-            x.productId === productId
-              ? { ...x, quantity: x.quantity - 1 }
-              : x,
+            x.productId === productId ? { ...x, quantity: x.quantity - 1 } : x,
           )
 
     await prisma.cart.update({

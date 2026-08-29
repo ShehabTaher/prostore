@@ -2,7 +2,7 @@
 
 A full-stack e-commerce storefront built with **Next.js**, following Brad Traversy’s Prostore course.
 
-**Progress:** Sections **1–5** complete · currently moving into Section 6.
+**Progress:** Sections **1–6** complete · currently moving into Section 7.
 
 ---
 
@@ -244,24 +244,79 @@ The course uses an older Next.js / NextAuth middleware pattern and does not cove
 | **Server action errors vs success** | Uncaught exceptions crash the action or show raw Prisma messages | Wrap actions in `try/catch` and return `{ success, message }` consistently (same pattern as auth actions) |
 
 **Not in this section yet (later in the course)**
-- Full `/cart` page (update quantities, remove items, totals UI) — Section 6
-- Merge guest cart into user cart on sign-in
 - Cart item count badge in the header
 
 **Outcome:** Shoppers can add products from the detail page, adjust quantity with `+` / `−`, and the cart persists in the database for guests (via cookie) and logged-in users (via `userId`).
 
 ---
 
-### Section 6 — Cart & Shipping Pages
+### ✅ Section 6 — Cart & Shipping Pages
 
-**Goal:** Complete the cart review and shipping address steps.
+**Goal:** Complete the cart review page, protect checkout routes, merge guest carts on login, and collect a shipping address before payment.
 
-**What you will build**
-- Cart page (update quantities, remove items, totals)
-- Shipping address form and validation
-- Checkout flow navigation between steps
+**What you build**
 
-**Outcome:** Users can review the cart and enter a shipping address.
+1. **Cart page** (`/cart`) — server page loads `getMyCart()` and renders a client `CartTable` with line items, images, quantity `+` / `−`, empty state, and subtotal.
+2. **Currency formatting** — `formatCurrency` in `lib/utils.ts` using `Intl.NumberFormat` for consistent USD display.
+3. **Proceed to checkout** — cart summary card navigates to `/shipping-address` (requires auth).
+4. **Protected checkout routes** — `authorized` in `auth.config.ts` redirects guests away from `/shipping-address`, `/payment-method`, `/place-order`, `/profile`, `/user/*`, `/order/*`, and `/admin`.
+5. **Merge guest cart on sign-in** — JWT callback reads `sessionCartId` cookie and calls `assignSessionCartToUser` so guest items attach to the logged-in user.
+6. **Checkout steps UI** — shared `CheckoutSteps` component (User Login → Shipping Address → Payment Method → Place Order).
+7. **Shipping address page** — redirects empty carts to `/cart`; loads the signed-in user’s saved address; shows steps + form.
+8. **Shipping address form** — React Hook Form + Zod (`shippingAddressSchema`); fields for full name, street, city, postal code, country; submits via `updateUserAddress`.
+9. **Persist address on User** — `User.address` JSON field updated by `updateUserAddress` / loaded by `getUserById`.
+10. **Default form values** — `shippingAddressDefaultValues` in `lib/constants` when the user has no saved address yet.
+
+**Key folders after this section**
+```
+app/(root)/
+  cart/
+    page.tsx                 # load cart, render table
+    cart-table.tsx           # client: qty controls, subtotal, checkout CTA
+  shipping-address/
+    page.tsx                 # auth + cart guards, load user address
+    shipping-address-form.tsx
+auth.config.ts               # protected path regexes + sessionCartId cookie
+auth.ts                      # JWT: merge guest cart on signIn / signUp
+lib/
+  actions/user.action.ts     # getUserById, updateUserAddress
+  db.ts                      # assignSessionCartToUser
+  validators.ts              # shippingAddressSchema
+  constants/index.ts         # shippingAddressDefaultValues
+  utils.ts                   # formatCurrency
+components/shared/
+  checkout-steps.tsx
+types/index.ts               # ShippingAddress
+prisma/schema.prisma         # User.address Json?
+```
+
+**How it works (short)**
+1. **Cart page** — `getMyCart()` → empty message or table of items; `+` / `−` reuse `addToCart` / `removeItemFromCart`; “Proceed to Checkout” goes to shipping.
+2. **Auth gate** — middleware `authorized` sees no session on a protected path → redirect to `/sign-in` (with callback URL).
+3. **Cart merge** — after credentials sign-in/sign-up, JWT callback attaches the guest `sessionCartId` cart to `userId` (deletes any prior user cart first).
+4. **Shipping** — page requires cart items + `userId` → form validates with Zod → `updateUserAddress` saves JSON on `User` → navigate to `/payment-method` (Section 7).
+
+**Issues encountered & how AI helped**
+
+Checkout and cart-merge sit on **NextAuth v5** + **App Router** patterns that differ from older course snippets. **Cursor AI was used to debug and align them**:
+
+| Issue | What went wrong | Fix (with AI) |
+| --- | --- | --- |
+| **Protect routes in NextAuth v5** | Plain middleware path checks conflict with the auth middleware export | Use `authorized({ request, auth })` in `auth.config.ts` with regex `protectedPaths`; return `false` when `!auth` so NextAuth redirects to sign-in |
+| **Guest cart lost after login** | Guest cart keyed by cookie; user cart keyed by `userId` — items “disappear” after sign-in | In JWT callback on `signIn` / `signUp`, call `assignSessionCartToUser(sessionCartId, user.id)` |
+| **`cookies()` in JWT callback** | Sync cookie access breaks on newer Next.js | `await cookies()` then read `sessionCartId` |
+| **Empty cart on shipping page** | Users can open `/shipping-address` with no items | Server `redirect('/cart')` when cart is missing or `items.length === 0` |
+| **`User.address` typing** | Prisma `Json?` is not a typed address object | Cast `user.address as ShippingAddress` for the form; validate writes with `shippingAddressSchema` |
+| **Form stack (RHF + Zod)** | Course form patterns vs current shadcn Form / `@hookform/resolvers` | Wire `useForm` + `zodResolver(shippingAddressSchema)` and typed `FormField` renders |
+| **Currency display** | Raw price strings look inconsistent next to totals | Add `formatCurrency` with `Intl.NumberFormat` (`USD`, 2 decimals) |
+| **Checkout step highlight** | Need a reusable step indicator without duplicating markup | `CheckoutSteps` with `current` index and `cn()` for active step styling |
+
+**Not in this section yet (later in the course)**
+- Payment method selection page — Section 7
+- Place-order / create order — Section 7
+- Cart item count badge in the header
+
+**Outcome:** Users can review and update the cart, sign in without losing guest items, and save a shipping address before continuing to payment.
 
 ---
 
@@ -423,7 +478,7 @@ The course uses an older Next.js / NextAuth middleware pattern and does not cove
 
 ---
 
-## Current status (after Sections 1–5)
+## Current status (after Sections 1–6)
 
 Already in place:
 - Next.js app structure with App Router
@@ -437,8 +492,13 @@ Already in place:
 - Seeded test users (e.g. admin and regular user — see `db/sample-data.ts`)
 - Cart model, `sessionCartId` guest cookie, and cart server actions (`addToCart`, `removeItemFromCart`, `getMyCart`)
 - Add-to-cart UI on product pages with quantity controls, stock checks, and toast feedback
+- Cart page (`/cart`) with quantity controls, subtotal, and checkout CTA
+- Guest cart merge into user cart on sign-in / sign-up
+- Protected checkout routes in `auth.config.ts`
+- Shipping address page + form (Zod + React Hook Form), saved on `User.address`
+- Checkout steps indicator
 
-**Next up (Section 6):** Cart page and shipping address form.
+**Next up (Section 7):** Payment method selection and order creation.
 
 ---
 

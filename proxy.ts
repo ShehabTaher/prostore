@@ -1,7 +1,10 @@
 import NextAuth from 'next-auth'
 import { authConfig } from '@/auth.config'
 
-export const { auth: middleware } = NextAuth(authConfig)
+const { auth } = NextAuth(authConfig)
+
+// Next.js 16 renamed middleware → proxy; must be a real function export
+export default auth
 
 export const config = {
   matcher: [

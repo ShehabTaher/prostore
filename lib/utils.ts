@@ -28,3 +28,22 @@ export function roundTo2DecimalPlaces(value: number | string) {
     throw new Error('Value is not a number or string')
   }
 }
+
+const CURRENCY_FORMATTER = new Intl.NumberFormat(undefined, {
+  currency: 'USD',
+  style: 'currency',
+  minimumFractionDigits: 2,
+})
+
+// Format Currency using CURRENCY_FORMATTER
+export function formatCurrency(amount: number | string | null) {
+  if (typeof amount === 'number') {
+    return CURRENCY_FORMATTER.format(amount)
+  } else if (typeof amount === 'string') {
+    return CURRENCY_FORMATTER.format(Number(amount))
+  } else if (amount === null) {
+    return '0.00'
+  } else {
+    throw new Error('Amount is not a number or string')
+  }
+}
