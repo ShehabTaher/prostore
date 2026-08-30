@@ -6,6 +6,7 @@ import SignOutForm from './sign-out-form'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -49,6 +50,16 @@ const UserButton = async () => {
               </div>
             </div>
           </DropdownMenuLabel>
+          <DropdownMenuItem>
+            <Link href='/user/profile' className='w-full'>
+              User Profile
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <Link href='/user/orders' className='w-full'>
+              Orders History
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <SignOutForm />
         </DropdownMenuContent>

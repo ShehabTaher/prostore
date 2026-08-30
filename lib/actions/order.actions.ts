@@ -12,6 +12,7 @@ import { prismaBase } from '@/db/prisma'
 import { convertToPlainObject } from '../utils'
 import { paypal } from '../paypal'
 import { revalidatePath } from 'next/cache'
+import { PAGE_SIZE } from '../constants'
 
 export async function createOrder() {
   try {
@@ -239,4 +240,35 @@ export async function updateOrderToPaid({
     },
   })
   if (!updatedOrder) return { success: false, message: 'Order not found' }
+}
+
+// get orders for user
+export async function getMyOrders({
+  limit = PAGE_SIZE,
+  page,
+}: {
+  limit?: number
+  page: number
+}) {
+  const session = await auth()
+  if (!session?.user) throw new Error('Unauthorized')
+
+  const userId = session?.user?.id
+  if (!userId) throw new Error('User not found')
+
+  const data = await prismaBase.order.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+    skip: (page - 1) * limit,
+  })
+
+  const dataCount = await prismaBase.order.count({
+    where: { userId: userId },
+  })
+
+  return {
+    data,
+    totalPages: Math.ceil(dataCount / limit),
+  }
 }

@@ -2,7 +2,7 @@
 
 A full-stack e-commerce storefront built with **Next.js**, following Brad Traversy’s Prostore course.
 
-**Progress:** Sections **1–8** complete · currently moving into Section 9.
+**Progress:** Sections **1–9** complete · currently moving into Section 10.
 
 ---
 
@@ -448,22 +448,66 @@ PAYPAL_CLIENT_SECRET=...
 **Not in this section yet (later in the course)**
 - Stripe checkout — Section 15
 - Email receipts after paid — Section 16
-- Order history list — Section 9
+- Order history list — Section 9 ✅
 
 **Outcome:** Unpaid PayPal orders can be paid in sandbox; after capture the order shows as paid and product stock is updated.
 
 ---
 
-### Section 9 — Order History & User Profile
+### ✅ Section 9 — Order History & User Profile
 
-**Goal:** Give users an account area for orders and profile updates.
+**Goal:** Give signed-in users an account area to view order history and update their profile.
 
-**What you will build**
-- User order history list
-- Order details for past purchases
-- Profile update form (name, etc.)
+**What you build**
 
-**Outcome:** Users can manage their profile and view past orders.
+1. **User layout** (`app/user/layout.tsx`) — dedicated shell with logo, `MainNav` (Profile / Orders), and header `Menu`.
+2. **Main nav** (`app/user/main-nav.tsx`) — client nav highlighting the active `/user/profile` or `/user/orders` path.
+3. **Order history page** (`/user/orders`) — `getMyOrders({ page })` with `PAGE_SIZE` pagination; table of id, date, total, paid, delivered; **View** links to `/order/[id]`.
+4. **Pagination component** — Previous / Next using `formUrlQuery` to update the `page` search param.
+5. **Profile page** (`/user/profile`) — wraps form in `SessionProvider` so the client can read/update the session.
+6. **Profile form** — React Hook Form + `updateProfileSchema`; email disabled; name editable; `updateUserProfile` server action; `session.update()` + toast + `router.refresh()`.
+7. **Header links** — `UserButton` dropdown links to Profile and Orders.
+8. **Session name sync** — JWT `trigger === 'update'` writes `session.user.name` onto the token so the header name updates after profile save.
+
+**Key folders after this section**
+```
+app/user/
+  layout.tsx                     # user account chrome
+  main-nav.tsx                   # Profile | Orders
+  orders/page.tsx                # paginated order history
+  profile/
+    page.tsx                     # SessionProvider + form
+    profile-form.tsx
+components/shared/
+  pagination.tsx
+  header/user-button.tsx        # links to /user/profile and /user/orders
+lib/
+  actions/order.actions.ts       # getMyOrders
+  actions/user.action.ts         # updateUserProfile
+  validators.ts                  # updateProfileSchema
+  constants/index.ts             # PAGE_SIZE
+  utils.ts                       # formUrlQuery
+auth.ts                          # jwt/session update for name
+```
+
+**How it works (short)**
+1. **Orders** — authenticated user opens `/user/orders?page=1` → `getMyOrders` loads their orders (newest first) → table + optional pagination.
+2. **Profile** — form defaults from `useSession()` → submit → `updateUserProfile` updates DB name → `update(newSession)` refreshes JWT name → header shows the new name.
+
+**Issues encountered & how AI helped**
+
+| Issue | What went wrong | Fix (with AI) |
+| --- | --- | --- |
+| **Session name stale after profile update** | DB name changed but header still showed old JWT name | Call `update()` from `next-auth/react` and handle `trigger === 'update'` in the JWT callback |
+| **Client needs session on profile page** | `useSession` empty without a provider | Wrap profile page children in `SessionProvider` with the server `auth()` session |
+| **Pagination URL building** | Need to change `page` without dropping other query params | Shared `formUrlQuery` helper + `Pagination` client component |
+| **Order totals typing** | Prisma `Decimal` on list rows | Format with `formatCurrency(order.totalPrice.toNumber())` (or stringify in the action if preferred) |
+| **View link path typo** | Link pointed at `/orders/[id]` (missing singular route) | Use `/order/${order.id}` to match the existing order details page |
+
+**Not in this section yet (later in the course)**
+- Admin dashboard and admin order management — Section 10
+
+**Outcome:** Users can open an account area, browse paginated order history, open order details, and update their display name.
 
 ---
 
@@ -585,7 +629,7 @@ PAYPAL_CLIENT_SECRET=...
 
 ---
 
-## Current status (after Sections 1–8)
+## Current status (after Sections 1–9)
 
 Already in place:
 - Next.js app structure with App Router
@@ -609,8 +653,11 @@ Already in place:
 - `Order` / `OrderItem` models; order details page at `/order/[id]`
 - PayPal sandbox: create + capture payment, mark order paid, decrement stock
 - Jest PayPal helper tests (`npm test`)
+- User account area: `/user/profile` and `/user/orders` with layout nav
+- Paginated order history (`getMyOrders` + `Pagination`)
+- Profile update form with session name sync
 
-**Next up (Section 9):** Order history list and user profile updates.
+**Next up (Section 10):** Admin overview dashboard and admin order management.
 
 ---
 
