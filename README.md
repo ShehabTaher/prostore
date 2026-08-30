@@ -2,7 +2,7 @@
 
 A full-stack e-commerce storefront built with **Next.js**, following Brad Traversy’s Prostore course.
 
-**Progress:** Sections **1–6** complete · currently moving into Section 7.
+**Progress:** Sections **1–8** complete · currently moving into Section 9.
 
 ---
 
@@ -14,7 +14,7 @@ A full-stack e-commerce storefront built with **Next.js**, following Brad Traver
 | Styling | Tailwind CSS, shadcn/ui |
 | Database | Prisma |
 | Auth | NextAuth v5 (Auth.js), credentials provider |
-| Payments | PayPal *(Section 8)*, Stripe *(Section 15)* |
+| Payments | PayPal *(Section 8)* ✅, Stripe *(Section 15)* |
 
 ---
 
@@ -312,38 +312,145 @@ Checkout and cart-merge sit on **NextAuth v5** + **App Router** patterns that di
 | **Checkout step highlight** | Need a reusable step indicator without duplicating markup | `CheckoutSteps` with `current` index and `cn()` for active step styling |
 
 **Not in this section yet (later in the course)**
-- Payment method selection page — Section 7
-- Place-order / create order — Section 7
 - Cart item count badge in the header
 
 **Outcome:** Users can review and update the cart, sign in without losing guest items, and save a shipping address before continuing to payment.
 
 ---
 
-### Section 7 — Payment Method & Order Pages
+### ✅ Section 7 — Payment Method & Order Pages
 
-**Goal:** Choose a payment method and create orders.
+**Goal:** Choose a payment method, review the order summary, create a real order in the database, and show order details after checkout.
 
-**What you will build**
-- Payment method selection page
-- Place-order summary page
-- Order creation in the database
-- Order details page after checkout
+**What you build**
 
-**Outcome:** A full checkout flow that creates real orders.
+1. **Payment methods constants** — `PAYMENT_METHODS` (`PayPal`, `Stripe`, `CashOnDelivery`) and `DEFAULT_PAYMENT_METHOD` in `lib/constants`.
+2. **Payment method validators** — `paymentMethodSchema` (must be one of the allowed methods); `insertOrderSchema` / `insertOrderItemSchema` for order creation.
+3. **Prisma models** — `Order` (address, payment, prices, paid/delivered flags) and `OrderItem` (composite PK on `orderId` + `productId`); `User.paymentMethod` string field.
+4. **Payment method page** (`/payment-method`) — checkout step 2; loads user’s preferred method; radio group form.
+5. **`updateUserPaymentMethod`** — validates and saves `User.paymentMethod`, then navigate to `/place-order`.
+6. **Place order page** (`/place-order`) — guards: empty cart → `/cart`, no address → shipping, no payment → payment method; summary of address, payment, items, and totals with Edit links.
+7. **`createOrder` server action** — validates cart + address + payment; builds order from cart prices; creates order + line items; clears cart; returns `redirectTo: /order/[id]`.
+8. **`createOrderWithItems` DB helper** — creates order, inserts items, resets cart totals/items (Prisma client wrappers in `lib/db.ts`).
+9. **Order details page** (`/order/[id]`) — `getOrderById` with items + user; `OrderDetailsTable` shows payment/shipping status badges, line items, and totals.
+10. **Display helpers** — `shortenUuid`, `formatDateTime` for order id and paid/delivered timestamps.
+11. **Types** — `Order`, `OrderItem` inferred from Zod schemas and extended with id, status flags, and relations.
+
+**Key folders after this section**
+```
+app/(root)/
+  payment-method/
+    page.tsx
+    payment-method-form.tsx
+  place-order/
+    page.tsx
+    place-order-form.tsx
+  order/[id]/
+    page.tsx
+    order-details-table.tsx
+lib/
+  actions/order.actions.ts       # createOrder, getOrderById
+  actions/user.action.ts         # updateUserPaymentMethod
+  db.ts                          # createOrderWithItems (+ Order clients)
+  validators.ts                  # paymentMethodSchema, insertOrder*
+  constants/index.ts             # PAYMENT_METHODS, DEFAULT_PAYMENT_METHOD
+  utils.ts                       # shortenUuid, formatDateTime
+types/index.ts                   # Order, OrderItem
+prisma/schema.prisma             # Order, OrderItem, User.paymentMethod
+components/ui/radio-group.tsx
+```
+
+**How it works (short)**
+1. **Payment** — form submits selected method → `updateUserPaymentMethod` → `/place-order`.
+2. **Review** — place-order page requires cart + address + payment method; shows editable summary and totals.
+3. **Place order** — client calls `createOrder` → validate prerequisites (or return `redirectTo`) → insert `Order` + `OrderItem`s → empty cart → redirect to `/order/[id]`.
+4. **Order details** — load order by id; show Not Paid / Not Delivered until Section 8+ payment and delivery updates.
+
+**Issues encountered & how AI helped**
+
+Order creation spans **Prisma 7 client typing**, **Decimal serialization**, and **checkout guard redirects**. **Cursor AI was used to debug and align them**:
+
+| Issue | What went wrong | Fix (with AI) |
+| --- | --- | --- |
+| **Invalid / stale payment method default** | Saved `paymentMethod` not in `PAYMENT_METHODS` broke the radio default | Prefer user’s method only if `PAYMENT_METHODS.includes(...)`; else `DEFAULT_PAYMENT_METHOD` |
+| **Checkout step guards** | Users can skip shipping or payment and hit place-order | Server `redirect()` when cart empty, address missing, or payment method missing |
+| **`createOrder` soft redirects** | Missing cart/address/payment should send the user back without throwing | Return `{ success: false, message, redirectTo }` and let the client `router.push` |
+| **Prisma Order / OrderItem client typing** | Generated client / adapter typing gaps after schema changes | Thin `getOrderClient` / `getOrderItemClient` wrappers in `lib/db.ts` with clear regenerate/restart message |
+| **Clear cart after order** | Leaving items in cart after place-order allows duplicate orders | After inserting items, update cart: `items: []` and zero price fields |
+| **Order Decimal → client** | Passing Prisma `Decimal` into client components fails serialization | `convertToPlainObject` + `.toString()` on price fields in `getOrderById` |
+| **Order type shape** | UI needs `orderItems`, paid/delivered flags, and user — not only insert schema | Extend `Order` type with id, dates, status flags, `orderItems`, and `user` |
+| **Long UUID in UI** | Full UUID clutters the order heading | `shortenUuid` shows last 6 characters; `formatDateTime` for paid/delivered badges |
+
+**Not in this section yet (later in the course)**
+- PayPal (and Stripe) payment buttons / mark order paid — Sections 8 & 15
+- Order history list and user profile — Section 9
+- Cart item count badge in the header
+
+**Outcome:** Shoppers can select a payment method, place an order that is persisted with line items, and view the order details page (payment still unpaid until later sections).
 
 ---
 
-### Section 8 — PayPal Payments
+### ✅ Section 8 — PayPal Payments
 
-**Goal:** Accept payments with PayPal.
+**Goal:** Accept payments with PayPal on unpaid orders and mark them paid after capture.
 
-**What you will build**
-- PayPal SDK / API integration
-- Pay button on the order page
-- Mark orders as paid after successful payment
+**What you build**
 
-**Outcome:** Orders can be paid through PayPal.
+1. **PayPal env + API helper** (`lib/paypal.ts`) — OAuth access token, `createOrder(price)`, `capturePayment(paypalOrderId)` against the sandbox API (`PAYPAL_API_URL`).
+2. **Jest tests** (`tests/paypal.test.ts`) — token generation, create order, mocked capture; `npm test` / `npm run test:watch`.
+3. **`@paypal/react-paypal-js`** — `PayPalScriptProvider` + `PayPalButtons` on the order details page when method is PayPal and `!isPaid`.
+4. **Server actions** (`lib/actions/order.actions.ts`):
+   - `createPayPalOrder(orderId)` — create PayPal order for `totalPrice`, store PayPal id in `Order.paymentResult`
+   - `approvePayPalOrder(orderId, { orderID })` — capture PayPal payment, verify COMPLETED, then mark paid
+   - `updateOrderToPaid` — set `isPaid` / `paidAt` / `paymentResult`; decrement product stock
+5. **Order details UI** — loading/error state for the PayPal script; buttons call create/approve actions with toast feedback; `revalidatePath` after pay.
+6. **`PaypalPayment` type** — Zod schema for payment result (`id`, `status`, `email_address`, `pricePaid`).
+7. **Friendlier PayPal errors** — `format-error.ts` parses PayPal JSON errors (e.g. sandbox `COMPLIANCE_VIOLATION`).
+
+**Key folders after this section**
+```
+lib/
+  paypal.ts                      # PayPal REST helpers
+  actions/order.actions.ts       # createPayPalOrder, approvePayPalOrder, updateOrderToPaid
+  format-error.ts                # + formatPayPalError
+  validators.ts                  # paypalPaymentSchema
+types/index.ts                   # PaypalPayment
+app/(root)/order/[id]/
+  page.tsx                       # pass PAYPAL_CLIENT_ID into table
+  order-details-table.tsx        # PayPal buttons when unpaid
+tests/
+  paypal.test.ts
+jest.config.ts / jest.setup.ts
+```
+
+**Env vars (do not commit secrets)**
+```
+PAYPAL_API_URL=https://api-m.sandbox.paypal.com
+PAYPAL_CLIENT_ID=...
+PAYPAL_CLIENT_SECRET=...
+```
+
+**How it works (short)**
+1. Unpaid PayPal order page loads the JS SDK with `PAYPAL_CLIENT_ID`.
+2. Buyer clicks PayPal → `createOrder` → `createPayPalOrder` creates a PayPal order and saves its id on `paymentResult`.
+3. Buyer approves → `onApprove` → `approvePayPalOrder` captures payment → `updateOrderToPaid` → stock decrements → UI shows Paid.
+
+**Issues encountered & how AI helped**
+
+| Issue | What went wrong | Fix (with AI) |
+| --- | --- | --- |
+| **PayPal JSON errors in toast** | Raw API error body is JSON; UI showed unreadable text | `formatPayPalError` parses `details` / `message`; special note for `COMPLIANCE_VIOLATION` |
+| **Capture id mismatch** | Capture response id must match the PayPal order id stored on `paymentResult` | Compare `captureResponse.id` to `(order.paymentResult as PaypalPayment)?.id` and require `COMPLETED` |
+| **Stock after pay** | Paying should reduce inventory | In `updateOrderToPaid`, loop `orderItems` and `stock.increment: -quantity` |
+| **Client needs PayPal client id** | Buttons need the public client id from the server page | Pass `paypalClientId={process.env.PAYPAL_CLIENT_ID!}` into `OrderDetailsTable` |
+| **Jest for PayPal helpers** | Need confidence before wiring UI | Token + createOrder live sandbox tests; capture covered with `jest.spyOn` mock |
+
+**Not in this section yet (later in the course)**
+- Stripe checkout — Section 15
+- Email receipts after paid — Section 16
+- Order history list — Section 9
+
+**Outcome:** Unpaid PayPal orders can be paid in sandbox; after capture the order shows as paid and product stock is updated.
 
 ---
 
@@ -478,7 +585,7 @@ Checkout and cart-merge sit on **NextAuth v5** + **App Router** patterns that di
 
 ---
 
-## Current status (after Sections 1–6)
+## Current status (after Sections 1–8)
 
 Already in place:
 - Next.js app structure with App Router
@@ -494,11 +601,16 @@ Already in place:
 - Add-to-cart UI on product pages with quantity controls, stock checks, and toast feedback
 - Cart page (`/cart`) with quantity controls, subtotal, and checkout CTA
 - Guest cart merge into user cart on sign-in / sign-up
-- Protected checkout routes in `auth.config.ts`
+- Protected checkout routes in `auth.config.ts` (Edge `proxy.ts` for Next.js 16)
 - Shipping address page + form (Zod + React Hook Form), saved on `User.address`
 - Checkout steps indicator
+- Payment method page (PayPal / Stripe / CashOnDelivery) saved on `User.paymentMethod`
+- Place-order summary with guards, totals, and `createOrder`
+- `Order` / `OrderItem` models; order details page at `/order/[id]`
+- PayPal sandbox: create + capture payment, mark order paid, decrement stock
+- Jest PayPal helper tests (`npm test`)
 
-**Next up (Section 7):** Payment method selection and order creation.
+**Next up (Section 9):** Order history list and user profile updates.
 
 ---
 
@@ -510,3 +622,6 @@ Already in place:
 | `npm run build` | Create production build |
 | `npm run start` | Run production server |
 | `npm run lint` | Run ESLint |
+| `npm test` | Run Jest tests |
+| `npm run test:watch` | Jest in watch mode |
+| `npm run db:seed` | Seed the database |

@@ -1,9 +1,10 @@
 import React from 'react'
 import { cn } from '@/lib/utils'
-const CheckoutSteps = ({ current = 0 }) => {
+
+const CheckoutSteps = ({ current = 0 }: { current?: number }) => {
   return (
-    <div className='flex-between flex-col md:flex-row space-x-2 space-y-2 mb-10'>
-      {['UserLogin', 'Shipping Address', 'Payment Method', 'Place Order'].map(
+    <div className='flex-between flex-col md:flex-row space-y-2 space-x-2 mb-10'>
+      {['User Login', 'Shipping Address', 'Payment Method', 'Place Order'].map(
         (step, index) => (
           <React.Fragment key={step}>
             <div
@@ -15,7 +16,7 @@ const CheckoutSteps = ({ current = 0 }) => {
               {step}
             </div>
             {step !== 'Place Order' && (
-              <hr className='w-16 border-t border-gray-300 mx-2 ' />
+              <hr className='w-16 border-t border-gray-300 mx-2' />
             )}
           </React.Fragment>
         ),

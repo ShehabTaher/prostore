@@ -37,8 +37,27 @@ export function formatError(error: unknown) {
   }
 
   if (error instanceof Error) {
-    return error.message
+    return formatPayPalError(error.message) ?? error.message
   }
 
   return 'Something went wrong'
+}
+
+function formatPayPalError(message: string) {
+  try {
+    const parsed = JSON.parse(message) as {
+      name?: string
+      message?: string
+      details?: { issue?: string; description?: string }[]
+    }
+    const detail = parsed.details?.[0]
+    if (detail?.issue === 'COMPLIANCE_VIOLATION') {
+      return 'PayPal sandbox blocked this payment (COMPLIANCE_VIOLATION). Use a US sandbox business account for the seller REST app, and a separate personal sandbox buyer to pay.'
+    }
+    if (detail?.description) return detail.description
+    if (parsed.message) return parsed.message
+  } catch {
+    return null
+  }
+  return null
 }

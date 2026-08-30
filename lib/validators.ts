@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { formatNumberWithDecimal } from './utils'
+import { PAYMENT_METHODS } from './constants'
 
 const currency = z
   .string()
@@ -73,4 +74,46 @@ export const shippingAddressSchema = z.object({
   country: z.string().min(3, 'Country must be at least 3 characters'),
   lat: z.number().optional().nullable(),
   lng: z.number().optional().nullable(),
+})
+
+// Schema for the payment method
+export const paymentMethodSchema = z
+  .object({
+    type: z.string().min(1, 'Payment method is required'),
+  })
+  .refine((data) => PAYMENT_METHODS.includes(data.type), {
+    path: ['type'],
+    message: 'Invalid payment method',
+  })
+
+// Schema for inserting order
+export const insertOrderSchema = z.object({
+  userId: z.string().min(1, 'User ID is required'),
+  itemsPrice: currency,
+  shippingPrice: currency,
+  taxPrice: currency,
+  totalPrice: currency,
+  paymentMethod: z.string().refine((data) => PAYMENT_METHODS.includes(data), {
+    path: ['paymentMethod'],
+    message: 'Invalid payment method',
+  }),
+  shippingAddress: shippingAddressSchema,
+})
+
+// Schema for inserting order item
+export const insertOrderItemSchema = z.object({
+  productId: z.string().min(1, 'Product ID is required'),
+  slug: z.string().min(1, 'Slug is required'),
+  image: z.string().min(1, 'Image is required'),
+  name: z.string().min(1, 'Name is required'),
+  price: currency,
+  quantity: z.number().int().nonnegative('Quantity must be a positive number'),
+})
+
+// Schema for Paypal payment
+export const paypalPaymentSchema = z.object({
+  id: z.string(),
+  status: z.string(),
+  email_address: z.string(),
+  pricePaid: z.string(),
 })
