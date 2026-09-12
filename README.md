@@ -2,7 +2,7 @@
 
 A full-stack e-commerce storefront built with **Next.js**, following Brad Traversy’s Prostore course.
 
-**Progress:** Sections **1–9** complete · currently moving into Section 10.
+**Progress:** Sections **1–10** complete · currently moving into Section 11.
 
 ---
 
@@ -505,23 +505,72 @@ auth.ts                          # jwt/session update for name
 | **View link path typo** | Link pointed at `/orders/[id]` (missing singular route) | Use `/order/${order.id}` to match the existing order details page |
 
 **Not in this section yet (later in the course)**
-- Admin dashboard and admin order management — Section 10
+- Admin dashboard and admin order management — Section 10 ✅
 
 **Outcome:** Users can open an account area, browse paginated order history, open order details, and update their display name.
 
 ---
 
-### Section 10 — Admin Overview & Orders
+### ✅ Section 10 — Admin Overview & Orders
 
-**Goal:** Start the admin dashboard with overview stats and order management.
+**Goal:** Start the admin dashboard with overview stats and order management (list, delete, mark paid/delivered).
 
-**What you will build**
-- Admin layout and navigation
-- Overview cards (sales, users, products, orders)
-- Admin orders list and order details
-- Mark orders as delivered
+**What you build**
 
-**Outcome:** Admins can monitor the store and manage orders.
+1. **Admin role guard** (`lib/auth-guard.ts`) — `requireAdmin()` checks `session.user.role === 'admin'` and redirects to `/unauthorized`.
+2. **Admin layout** (`app/admin/layout.tsx`) — logo, admin `MainNav`, search input placeholder, and header `Menu`.
+3. **Admin nav** — Overview, Products, Orders, Users links (Products/Users wired later).
+4. **Overview dashboard** (`/admin/overview`) — cards for total sales, orders count, customers, products; Recharts bar chart of monthly sales; recent sales table.
+5. **`getOrderSummary`** — counts + `aggregate` total sales + raw SQL monthly sales + latest 6 orders with buyer name.
+6. **Admin orders page** (`/admin/orders`) — paginated `getAllOrders`; View + `DeleteDialog` per row.
+7. **`deleteOrder`** — deletes order and revalidates `/admin/orders`.
+8. **COD / delivery actions on order details** — admin-only **Mark As Paid** (`updateCODOrderToPaid`) for CashOnDelivery; **Mark As Delivered** (`deliverOrder`) when paid and not delivered.
+9. **Header Admin link** — `UserButton` shows Admin → `/admin/overview` for admin role.
+10. **Helpers** — `formatNumber` for counts; `Charts` client component with Recharts.
+
+**Key folders after this section**
+```
+app/admin/
+  layout.tsx
+  main-nav.tsx
+  overview/
+    page.tsx                 # dashboard cards + chart + recent sales
+    charts.tsx               # Recharts BarChart
+  orders/page.tsx            # admin order list + delete
+lib/
+  auth-guard.ts              # requireAdmin
+  actions/order.actions.ts   # getOrderSummary, getAllOrders, deleteOrder,
+                             # updateCODOrderToPaid, deliverOrder
+  utils.ts                   # formatNumber
+components/shared/
+  delete-dialog.tsx          # confirm + toast for delete actions
+app/(root)/order/[id]/
+  page.tsx                   # pass isAdmin
+  order-details-table.tsx    # Mark As Paid / Mark As Delivered for admins
+```
+
+**How it works (short)**
+1. **Admin gate** — overview calls `requireAdmin()`; orders page checks `role !== 'admin'`.
+2. **Dashboard** — `getOrderSummary()` feeds cards, monthly chart, and recent sales.
+3. **Orders admin** — list all orders with pagination; delete via dialog; open `/order/[id]` to manage payment/delivery.
+4. **Fulfillment** — on order details, admin can mark COD orders paid and paid orders delivered.
+
+**Issues encountered & how AI helped**
+
+| Issue | What went wrong | Fix (with AI) |
+| --- | --- | --- |
+| **Non-admins hitting `/admin/*`** | Protected path only requires login, not role | `requireAdmin()` redirects non-admins to `/unauthorized` |
+| **Monthly sales chart data** | Need grouped totals by month from Postgres | `$queryRaw` with `to_char("createdAt",'MM/YY')` + `SUM("totalPrice")`, map Decimals to numbers for Recharts |
+| **Delete UX** | Hard deletes need confirmation | Shared `DeleteDialog` with `useTransition`, toast, and `revalidatePath` |
+| **COD never becomes paid** | PayPal buttons only cover PayPal method | Admin **Mark As Paid** calls `updateCODOrderToPaid` → `updateOrderToPaid` |
+| **Deliver before pay** | Delivery must require payment first | `deliverOrder` returns error if `!order.isPaid` |
+| **Card labels vs values** | Easy to swap sales $ vs order count | Keep sales currency on the sales aggregate card and counts via `formatNumber` |
+
+**Not in this section yet (later in the course)**
+- Admin products CRUD + image upload — Section 11
+- Admin users list / search — Section 12
+
+**Outcome:** Admins can open a dashboard with sales stats, manage the orders list (view/delete), and mark COD orders paid / orders delivered.
 
 ---
 
@@ -629,7 +678,7 @@ auth.ts                          # jwt/session update for name
 
 ---
 
-## Current status (after Sections 1–9)
+## Current status (after Sections 1–10)
 
 Already in place:
 - Next.js app structure with App Router
@@ -656,8 +705,11 @@ Already in place:
 - User account area: `/user/profile` and `/user/orders` with layout nav
 - Paginated order history (`getMyOrders` + `Pagination`)
 - Profile update form with session name sync
+- Admin area: `/admin/overview` and `/admin/orders` with role guard
+- Dashboard cards, monthly sales chart (Recharts), recent sales
+- Admin order list with delete dialog; COD mark paid + mark delivered
 
-**Next up (Section 10):** Admin overview dashboard and admin order management.
+**Next up (Section 11):** Admin products CRUD and image upload.
 
 ---
 

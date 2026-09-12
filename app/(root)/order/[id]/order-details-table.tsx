@@ -22,8 +22,12 @@ import {
 import {
   createPayPalOrder,
   approvePayPalOrder,
+  updateCODOrderToPaid,
+  deliverOrder,
 } from '@/lib/actions/order.actions'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { useTransition } from 'react'
 
 function PrintLoadingState() {
   const [{ isPending, isRejected }] = usePayPalScriptReducer()
@@ -39,10 +43,13 @@ function PrintLoadingState() {
 export const OrderDetailsTable = ({
   order,
   paypalClientId,
+  isAdmin,
 }: {
   order: Order
   paypalClientId: string
+  isAdmin: boolean
 }) => {
+  const [isPending, startTransition] = useTransition()
   const {
     id,
     shippingAddress,
@@ -78,9 +85,9 @@ export const OrderDetailsTable = ({
 
   return (
     <>
-      <h1 className='py-4 text-2xl'>Order</h1>order {shortenUuid(id)}{' '}
+      <h1 className='py-4 text-2xl'>Order {shortenUuid(id)}</h1>
       <div className='grid md:grid-cols-3 md:gap-5'>
-        <div className='col-span-2 space-4-y overflow-x-auto'>
+        <div className='md:col-span-2 space-y-4 overflow-x-auto'>
           <Card>
             <CardContent className='p-4 gap-4'>
               <h2 className='text-xl pb-4'>Payment Method</h2>
@@ -94,7 +101,7 @@ export const OrderDetailsTable = ({
               )}
             </CardContent>
           </Card>
-          <Card className='my-2'>
+          <Card>
             <CardContent className='p-4 gap-4'>
               <h2 className='text-xl pb-4'>Shipping Address</h2>
               <p className='mb-2'>{shippingAddress.fullName}</p>
@@ -127,7 +134,7 @@ export const OrderDetailsTable = ({
                     <TableRow key={item.productId}>
                       <TableCell>
                         <Link
-                          href={`/product/${item.productId}`}
+                          href={`/product/${item.slug}`}
                           className='flex items-center'
                         >
                           <Image
@@ -169,6 +176,7 @@ export const OrderDetailsTable = ({
                 <div>Total</div>
                 <div>{formatCurrency(totalPrice)}</div>
               </div>
+              {/* PayPal Payment */}
               {!isPaid && paymentMethod === 'PayPal' && paypalClientId && (
                 <div>
                   <PayPalScriptProvider options={{ clientId: paypalClientId }}>
@@ -179,6 +187,46 @@ export const OrderDetailsTable = ({
                     />
                   </PayPalScriptProvider>
                 </div>
+              )}
+              {/* Cash On Delivery */}
+              {isAdmin && !isPaid && paymentMethod === 'CashOnDelivery' && (
+                <Button
+                  type='button'
+                  className='w-full'
+                  disabled={isPending}
+                  onClick={() =>
+                    startTransition(async () => {
+                      const res = await updateCODOrderToPaid(order.id)
+                      if (!res.success) {
+                        toast.error(res.message)
+                        return
+                      }
+                      toast.success(res.message)
+                    })
+                  }
+                >
+                  {isPending ? 'Processing...' : 'Mark As Paid'}
+                </Button>
+              )}
+              {/* Mark As Delivered */}
+              {isAdmin && isPaid && !isDelivered && (
+                <Button
+                  type='button'
+                  className='w-full'
+                  disabled={isPending}
+                  onClick={() =>
+                    startTransition(async () => {
+                      const res = await deliverOrder(order.id)
+                      if (!res.success) {
+                        toast.error(res.message)
+                        return
+                      }
+                      toast.success(res.message)
+                    })
+                  }
+                >
+                  {isPending ? 'Processing...' : 'Mark As Delivered'}
+                </Button>
               )}
             </CardContent>
           </Card>
